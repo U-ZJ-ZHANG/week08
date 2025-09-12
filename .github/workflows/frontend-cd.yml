@@ -12,13 +12,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Azure login（写死用你配置好的 Service Principal）
+      # 2. Azure Login (用你之前配置的 Service Principal)
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 3. Get AKS context
+      # 3. Get AKS credentials
       - name: Set Kubernetes context
         run: |
           az aks get-credentials \
@@ -26,21 +26,22 @@ jobs:
             --name sit722-aks \
             --overwrite-existing
 
-      # 4. Apply ConfigMaps, Secrets（先保证依赖资源存在）
+      # 4. Apply ConfigMaps
       - name: Apply ConfigMaps
         run: kubectl apply -f k8s/configmaps.yaml
 
+      # 5. Apply Secrets
       - name: Apply Secrets
         run: kubectl apply -f k8s/secrets.yaml
 
-      # 5. Apply Frontend Deployment（这里改成正确的 frontend.yaml）
+      # 6. Apply Frontend Deployment (你的 k8s/frontend.yaml)
       - name: Apply Frontend Deployment
         run: kubectl apply -f k8s/frontend.yaml
 
-      # 6. Restart frontend deployment，确保用最新镜像
+      # 7. Restart Deployment（注意名字是 frontend）
       - name: Restart Frontend Deployment
-        run: kubectl rollout restart deployment/frontend-deployment
+        run: kubectl rollout restart deployment/frontend
 
-      # 7. Verify frontend is running
+      # 8. 检查 Pod 是否正常 Running
       - name: Check Frontend Pods
-        run: kubectl get pods -l app=frontend
+        run: kubectl get pods -o wide
