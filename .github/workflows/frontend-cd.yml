@@ -8,25 +8,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      # 1. Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      # 2. Azure login（写死用你配置好的 Service Principal）
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Set Kubernetes context
-      run: |
-        az aks get-credentials --resource-group sit722-rg --name sit722-aks --overwrite-existing
+      # 3. Get AKS context
+      - name: Set Kubernetes context
+        run: |
+          az aks get-credentials \
+            --resource-group sit722-rg \
+            --name sit722-aks \
+            --overwrite-existing
 
-    # 确保 frontend-deployment 存在，不然直接 set image 会报错
-    - name: Apply Frontend Deployment
-      run: kubectl apply -f k8s/frontend-deployment.yaml
+      # 4. Apply ConfigMaps, Secrets（先保证依赖资源存在）
+      - name: Apply ConfigMaps
+        run: kubectl apply -f k8s/configmaps.yaml
 
-    - name: Deploy Frontend
-      run: kubectl set image deployment/frontend-deployment frontend=sit722devopszzjacr.azurecr.io/frontend:latest -n default
+      - name: Apply Secrets
+        run: kubectl apply -f k8s/secrets.yaml
 
-    - name: Logout from Azure
-      run: az logout
-      if: always()
+      # 5. Apply Frontend Deployment（这里改成正确的 frontend.yaml）
+      - name: Apply Frontend Deployment
+        run: kubectl apply -f k8s/frontend.yaml
+
+      # 6. Restart frontend deployment，确保用最新镜像
+      - name: Restart Frontend Deployment
+        run: kubectl rollout restart deployment/frontend-deployment
+
+      # 7. Verify frontend is running
+      - name: Check Frontend Pods
+        run: kubectl get pods -l app=frontend
