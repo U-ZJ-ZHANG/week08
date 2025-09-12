@@ -16,16 +16,16 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # 设置 AKS context
     - name: Set Kubernetes context
       run: |
         az aks get-credentials --resource-group sit722-rg --name sit722-aks --overwrite-existing
 
-    # 部署前端服务，写死 ACR 地址
+    # 确保 frontend-deployment 存在，不然直接 set image 会报错
+    - name: Apply Frontend Deployment
+      run: kubectl apply -f k8s/frontend-deployment.yaml
+
     - name: Deploy Frontend
-      run: |
-        kubectl set image deployment/frontend-deployment frontend=sit722devopszzjacr.azurecr.io/frontend:latest -n default
-        kubectl rollout status deployment/frontend-deployment -n default
+      run: kubectl set image deployment/frontend-deployment frontend=sit722devopszzjacr.azurecr.io/frontend:latest -n default
 
     - name: Logout from Azure
       run: az logout
