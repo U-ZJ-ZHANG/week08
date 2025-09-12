@@ -1,31 +1,33 @@
-name: CD - Deploy Frontend to AKS
+name: Frontend CI - Build and Push Image
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend_ci.yml'
 
 jobs:
-  deploy_frontend:
+  build_and_push_frontend:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # 登录 Azure
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # 设置 AKS context
-    - name: Set Kubernetes context
+    # 构建并推送 Frontend 镜像（写死 registry 名字）
+    - name: Build and Push Frontend Image
       run: |
-        az aks get-credentials --resource-group sit722-rg --name sit722-aks --overwrite-existing
-
-    # 部署前端服务，写死 ACR 地址
-    - name: Deploy Frontend
-      run: |
-        kubectl set image deployment/frontend-deployment frontend=sit722devopszzjacr.azurecr.io/frontend:latest -n default
-        kubectl rollout status deployment/frontend-deployment -n default
+        docker build -t sit722devopszzjacr.azurecr.io/frontend:latest ./frontend/
+        docker push sit722devopszzjacr.azurecr.io/frontend:latest
 
     - name: Logout from Azure
       run: az logout
