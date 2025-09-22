@@ -1,6 +1,8 @@
 name: Backend CD
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -11,7 +13,7 @@ jobs:
 
       - name: ACR Login
         run: |
-          echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
       - name: Build & Push Product Service
         run: |
@@ -23,16 +25,14 @@ jobs:
           docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/order_service:${{ github.sha }} backend/order_service
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/order_service:${{ github.sha }}
 
-      - name: Set kubeconfig from secret
+      - name: Set kubeconfig
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG_DATA }}" > $HOME/.kube/config
+          echo "${{ secrets.KUBECONFIG_DATA }}" > $HOME/kubeconfig
+          export KUBECONFIG=$HOME/kubeconfig
+          kubectl config view --minify --flatten
 
       - name: Deploy manifests
         run: |
+          export KUBECONFIG=$HOME/kubeconfig
           kubectl apply -f k8s/product-service.yaml -n w08-aks
           kubectl apply -f k8s/order-service.yaml -n w08-aks
-          kubectl apply -f k8s/order-svc.yaml -n w08-aks
-          kubectl apply -f k8s/product-db.yaml -n w08-aks
-          kubectl apply -f k8s/secrets.yaml -n w08-aks
-          kubectl apply -f k8s/configmaps.yaml -n w08-aks
