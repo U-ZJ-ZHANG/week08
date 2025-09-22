@@ -20,4 +20,6 @@ jobs:
 
       - name: Deploy manifests
         run: |
-          kubectl apply -f k8s/frontend-service.yml -n w08-aks
+          kubectl apply -f k8s/frontend.yaml -n w08-aks
+          kubectl apply -f k8s/secrets.yaml -n w08-aks
+          kubectl apply -f k8s/configmaps.yaml -n w08-aks

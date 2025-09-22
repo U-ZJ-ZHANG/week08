@@ -25,5 +25,9 @@ jobs:
 
       - name: Deploy manifests
         run: |
-          kubectl apply -f k8s/product-service.yml -n w08-aks
-          kubectl apply -f k8s/order-service.yml -n w08-aks
+          kubectl apply -f k8s/product-service.yaml -n w08-aks
+          kubectl apply -f k8s/order-service.yaml -n w08-aks
+          kubectl apply -f k8s/order-svc.yaml -n w08-aks
+          kubectl apply -f k8s/product-db.yaml -n w08-aks
+          kubectl apply -f k8s/secrets.yaml -n w08-aks
+          kubectl apply -f k8s/configmaps.yaml -n w08-aks
