@@ -1,8 +1,6 @@
 name: Frontend CD
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -29,4 +27,4 @@ jobs:
       - name: Deploy manifests
         run: |
           export KUBECONFIG=$HOME/kubeconfig
-          kubectl apply -f k8s/frontend.yaml -n w08-aks
+          kubectl apply -f k8s/frontend.yaml

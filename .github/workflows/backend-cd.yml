@@ -1,8 +1,6 @@
 name: Backend CD
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -34,5 +32,5 @@ jobs:
       - name: Deploy manifests
         run: |
           export KUBECONFIG=$HOME/kubeconfig
-          kubectl apply -f k8s/product-service.yaml -n w08-aks
-          kubectl apply -f k8s/order-service.yaml -n w08-aks
+          kubectl apply -f k8s/product-service.yaml
+          kubectl apply -f k8s/order-service.yaml
