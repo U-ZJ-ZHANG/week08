@@ -1,47 +1,44 @@
-name: CD - Deploy Frontend to AKS
+# =========================
+# Frontend CD Workflow
+# =========================
+name: Frontend CD
+
 
 on:
-  workflow_dispatch:
+workflow_dispatch:
+
 
 jobs:
-  deploy_frontend:
-    runs-on: ubuntu-latest
+deploy:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
 
-    steps:
-      # 1. Checkout repo
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      # 2. Azure Login (用你之前配置的 Service Principal)
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+- name: Azure Login
+uses: azure/login@v2
+with:
+creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 3. Get AKS credentials
-      - name: Set Kubernetes context
-        run: |
-          az aks get-credentials \
-            --resource-group sit722-rg \
-            --name sit722-aks \
-            --overwrite-existing
 
-      # 4. Apply ConfigMaps
-      - name: Apply ConfigMaps
-        run: kubectl apply -f k8s/configmaps.yaml
+- name: ACR Login
+run: echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-      # 5. Apply Secrets
-      - name: Apply Secrets
-        run: kubectl apply -f k8s/secrets.yaml
 
-      # 6. Apply Frontend Deployment (你的 k8s/frontend.yaml)
-      - name: Apply Frontend Deployment
-        run: kubectl apply -f k8s/frontend.yaml
+- name: Build & Push Frontend
+run: |
+docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }} frontend
+docker push ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }}
 
-      # 7. Restart Deployment（注意名字是 frontend）
-      - name: Restart Frontend Deployment
-        run: kubectl rollout restart deployment/frontend
 
-      # 8. 检查 Pod 是否正常 Running
-      - name: Check Frontend Pods
-        run: kubectl get pods -o wide
+- name: Set AKS Context
+uses: azure/aks-set-context@v3
+with:
+creds: ${{ secrets.AZURE_CREDENTIALS }}
+resource-group: sit722-w08-rg
+cluster-name: sit722-w08-aks
+
+
+- name: Deploy manifests
+run: |
+kubectl apply -f k8s/frontend-service.yml -n w08-aks
