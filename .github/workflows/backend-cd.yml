@@ -1,48 +1,41 @@
 name: Backend CD
 
-
 on:
-workflow_dispatch:
-
+  workflow_dispatch:
 
 jobs:
-deploy:
-runs-on: ubuntu-latest
-steps:
-- uses: actions/checkout@v4
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-- name: Azure Login
-uses: azure/login@v2
-with:
-creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: ACR Login
+        run: |
+          echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
+      - name: Build & Push Product Service
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/product_service:${{ github.sha }} backend/product_service
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/product_service:${{ github.sha }}
 
-- name: ACR Login
-run: echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+      - name: Build & Push Order Service
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/order_service:${{ github.sha }} backend/order_service
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/order_service:${{ github.sha }}
 
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          resource-group: sit722-w08-rg
+          cluster-name: sit722-w08-aks
 
-- name: Build & Push Product Service
-run: |
-docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/product_service:${{ github.sha }} backend/product_service
-docker push ${{ secrets.ACR_LOGIN_SERVER }}/product_service:${{ github.sha }}
-
-
-- name: Build & Push Order Service
-run: |
-docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/order_service:${{ github.sha }} backend/order_service
-docker push ${{ secrets.ACR_LOGIN_SERVER }}/order_service:${{ github.sha }}
-
-
-- name: Set AKS Context
-uses: azure/aks-set-context@v3
-with:
-creds: ${{ secrets.AZURE_CREDENTIALS }}
-resource-group: sit722-w08-rg
-cluster-name: sit722-w08-aks
-
-
-- name: Deploy manifests
-run: |
-kubectl apply -f k8s/product-service.yml -n w08-aks
-kubectl apply -f k8s/order-service.yml -n w08-aks
+      - name: Deploy manifests
+        run: |
+          kubectl apply -f k8s/product-service.yml -n w08-aks
+          kubectl apply -f k8s/order-service.yml -n w08-aks

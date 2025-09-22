@@ -1,41 +1,35 @@
 name: Frontend CD
 
-
 on:
-workflow_dispatch:
-
+  workflow_dispatch:
 
 jobs:
-deploy:
-runs-on: ubuntu-latest
-steps:
-- uses: actions/checkout@v4
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-- name: Azure Login
-uses: azure/login@v2
-with:
-creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: ACR Login
+        run: |
+          echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
+      - name: Build & Push Frontend
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }} frontend
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }}
 
-- name: ACR Login
-run: echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          resource-group: sit722-w08-rg
+          cluster-name: sit722-w08-aks
 
-
-- name: Build & Push Frontend
-run: |
-docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }} frontend
-docker push ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }}
-
-
-- name: Set AKS Context
-uses: azure/aks-set-context@v3
-with:
-creds: ${{ secrets.AZURE_CREDENTIALS }}
-resource-group: sit722-w08-rg
-cluster-name: sit722-w08-aks
-
-
-- name: Deploy manifests
-run: |
-kubectl apply -f k8s/frontend-service.yml -n w08-aks
+      - name: Deploy manifests
+        run: |
+          kubectl apply -f k8s/frontend-service.yml -n w08-aks
