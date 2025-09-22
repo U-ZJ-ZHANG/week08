@@ -1,7 +1,7 @@
 name: CD - Deploy Frontend
 
 on:
-  workflow_dispatch:   # 手动触发，不用每次 push 都跑
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -11,17 +11,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 登录 Azure
+      # 🔑 Azure Login using federated credentials (not JSON)
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-      # 登录 ACR
+      # 🐳 Azure Container Registry Login
       - name: ACR Login
         run: az acr login --name sit722zzjacr
 
-      # 配置 kubectl
+      # ⚙️ Set up AKS context
       - name: Set up AKS
         run: |
           az aks get-credentials \
@@ -29,8 +32,7 @@ jobs:
             --name sit722-w08-aks \
             --overwrite-existing
 
-      # 替换镜像 tag 并部署
+      # 🚀 Deploy frontend manifests
       - name: Deploy Frontend
         run: |
-          sed -i "s|IMAGE_TAG|${{ github.sha }}|g" week08/k8s/frontend.yaml
-          kubectl apply -f week08/k8s/frontend.yaml
+          kubectl apply -f k8s/frontend.yaml -n default
