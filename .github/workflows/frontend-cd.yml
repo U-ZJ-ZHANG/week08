@@ -1,4 +1,4 @@
-name: CD - Deploy Frontend
+name: Frontend CD
 
 on:
   workflow_dispatch:
@@ -6,33 +6,33 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # ✅ 拉取代码
+      - uses: actions/checkout@v4
 
-      # 🔑 Azure Login using federated credentials (not JSON)
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-
-      # 🐳 Azure Container Registry Login
+      # ✅ 登录 ACR（用 secrets，而不是 SP）
       - name: ACR Login
-        run: az acr login --name sit722zzjacr
-
-      # ⚙️ Set up AKS context
-      - name: Set up AKS
         run: |
-          az aks get-credentials \
-            --resource-group sit722-w08-rg \
-            --name sit722-w08-aks \
-            --overwrite-existing
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-      # 🚀 Deploy frontend manifests
-      - name: Deploy Frontend
+      # ✅ 构建并推送 frontend 镜像
+      - name: Build & Push Frontend
         run: |
+          IMAGE_TAG=${GITHUB_SHA}
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/frontend:$IMAGE_TAG frontend
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/frontend:$IMAGE_TAG
+
+      # ✅ 设置 kubeconfig（直接用 secrets）
+      - name: Set kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG_DATA }}" > $HOME/kubeconfig
+          export KUBECONFIG=$HOME/kubeconfig
+          kubectl config view --minify --flatten
+
+      # ✅ 部署 frontend，更新镜像 tag
+      - name: Deploy manifests
+        run: |
+          export KUBECONFIG=$HOME/kubeconfig
+          IMAGE_TAG=${GITHUB_SHA}
+          kubectl set image deployment/frontend frontend-container=${{ secrets.ACR_LOGIN_SERVER }}/frontend:$IMAGE_TAG -n default || \
           kubectl apply -f k8s/frontend.yaml -n default
