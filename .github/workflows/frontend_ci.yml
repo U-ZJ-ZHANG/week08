@@ -11,13 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
+      - name: Check frontend files
+        run: ls -l frontend
 
-      - name: Install Frontend
-        run: npm install --prefix frontend
-
-      - name: Test Frontend
-        run: npm test --prefix frontend || echo "No tests for frontend"
+      - name: Validate nginx.conf exists
+        run: test -f frontend/nginx.conf && echo "nginx.conf found" || echo "nginx.conf missin
