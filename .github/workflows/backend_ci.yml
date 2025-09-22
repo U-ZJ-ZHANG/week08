@@ -11,19 +11,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: 18
+          python-version: '3.10'
 
-      - name: Install Product Service
-        run: npm install --prefix backend/product_service
+      - name: Install dependencies for Product Service
+        run: pip install -r backend/product_service/requirements.txt
 
-      - name: Test Product Service
-        run: npm test --prefix backend/product_service || echo "No tests for product_service"
+      - name: Run tests for Product Service
+        run: pytest backend/product_service/tests || echo "No tests for product_service"
 
-      - name: Install Order Service
-        run: npm install --prefix backend/order_service
+      - name: Install dependencies for Order Service
+        run: pip install -r backend/order_service/requirements.txt
 
-      - name: Test Order Service
-        run: npm test --prefix backend/order_service || echo "No tests for order_service"
+      - name: Run tests for Order Service
+        run: pytest backend/order_service/tests || echo "No tests for order_service"
