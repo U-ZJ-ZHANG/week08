@@ -1,30 +1,36 @@
-name: Frontend CD
+name: CD - Deploy Frontend
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:   # 手动触发，不用每次 push 都跑
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      # 登录 Azure
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 登录 ACR
       - name: ACR Login
-        run: |
-          echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+        run: az acr login --name sit722zzjacr
 
-      - name: Build & Push Frontend
+      # 配置 kubectl
+      - name: Set up AKS
         run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }} frontend
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }}
+          az aks get-credentials \
+            --resource-group sit722-w08-rg \
+            --name sit722-w08-aks \
+            --overwrite-existing
 
-      - name: Set kubeconfig
+      # 替换镜像 tag 并部署
+      - name: Deploy Frontend
         run: |
-          echo "${{ secrets.KUBECONFIG_DATA }}" > $HOME/kubeconfig
-          export KUBECONFIG=$HOME/kubeconfig
-          kubectl config view --minify --flatten
-
-      - name: Deploy manifests
-        run: |
-          export KUBECONFIG=$HOME/kubeconfig
-          kubectl apply -f k8s/frontend.yaml
+          sed -i "s|IMAGE_TAG|${{ github.sha }}|g" week08/k8s/frontend.yaml
+          kubectl apply -f week08/k8s/frontend.yaml
