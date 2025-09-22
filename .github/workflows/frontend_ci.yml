@@ -1,36 +1,31 @@
-name: Frontend CI - Build and Push Frontend Image
+# =========================
+# Frontend CI Workflow
+# =========================
+name: Frontend CI
+
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend_ci.yml'
+push:
+branches: [ main ]
+workflow_dispatch:
+
 
 jobs:
-  build_and_push_frontend:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
 
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+- name: Set up Node.js
+uses: actions/setup-node@v4
+with:
+node-version: 18
 
-    # 必须加上这一段，不然 push 还是会 401
-    - name: Login to ACR
-      run: az acr login --name sit722devopszzjacr
 
-    - name: Build and Push Frontend Image
-      run: |
-        docker build -t sit722devopszzjacr.azurecr.io/frontend:latest ./frontend
-        docker push sit722devopszzjacr.azurecr.io/frontend:latest
+- name: Install dependencies
+run: npm ci --prefix frontend
 
-    - name: Logout from Azure
-      run: az logout
-      if: always()
+
+- name: Run tests
+run: npm test --prefix frontend
